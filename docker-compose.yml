@@ -1,0 +1,35 @@
+version: '0.7'
+services:
+  db:
+    build: ./db
+    networks:
+      - db-network
+    volumes:
+      - data-volume:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    networks:
+      - db-network
+      - backend-network
+    depends_on:
+      - db
+
+  streamlit:
+    build: ./api
+    networks:
+      - backend-network
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+networks:
+  db-network:
+    driver: bridge
+  backend-network:
+    driver: bridge
+
+volumes:
+  data-volume:
+

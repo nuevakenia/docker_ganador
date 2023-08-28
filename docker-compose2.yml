@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  db:
+    build: ./db
+    networks:
+      - db-network
+    volumes:
+      - data-volume:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    networks:
+      - db-network
+      - backend-network
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+
+  streamlit:
+    build: ./streamlit
+    networks:
+      - backend-network
+    depends_on:
+      - backend
+    ports:
+      - "80:8501"
+
+networks:
+  db-network:
+    driver: bridge
+  backend-network:
+    driver: bridge
+
+volumes:
+  data-volume:
