@@ -106,7 +106,10 @@ class ReporteRepo:
     async def get(cls, db, reporte_id:int) -> Reporte:
         stmt = select(Reporte).where(Reporte.id == reporte_id)
         result = await db.fetch_one(stmt)
-        return result
+        if result:
+            return result
+        else:
+            return None
 
     @classmethod
     async def create(cls,input : ExecutionSchema) -> Reporte:
@@ -148,8 +151,6 @@ class ReporteRepo:
     @classmethod
     async def update(cls, report_id:int, marcas) -> Reporte:
         await asyncio.sleep(10)
-        if not marcas:
-            marcas = {"error" : "sin marcaciones dentro del rango de fecha para la sucursal seleccionada."}
         stmt_update = (
         update(Reporte).
         where(and_(Reporte.id == report_id)).
@@ -157,10 +158,10 @@ class ReporteRepo:
             estado="En proceso"
         )
     )
+        report = await database.execute(stmt_update)
+
         await asyncio.sleep(10)
-        if not marcas:
-            marcas = {"error" : "sin marcaciones dentro del rango de fecha para la sucursal seleccionada."}
-        stmt_update = (
+        stmt_update2 = (
         update(Reporte).
         where(and_(Reporte.id == report_id)).
         values(
@@ -168,7 +169,7 @@ class ReporteRepo:
             estado="Finalizado"
         )
     )
-        report = await database.execute(stmt_update)
+        report = await database.execute(stmt_update2)
         return report
 
 
@@ -201,17 +202,24 @@ async def descargar_reporte(reporte_id: int):
         raise HTTPException(status_code=400, detail="Reporte no finalizado")
 
     data_dict = json.loads(reporte.archivo)
-    # Suponiendo que reporte.archivo es un diccionario o una lista de diccionarios que puedes convertir en DataFrame
+    if not data_dict:
+        raise HTTPException(status_code=400, detail="Reporte sin datos")
+
     df = DataFrame(data_dict)
-    generate_pdf(df, reporte.sucursal, reporte.start_date, reporte.end_date)
+
+    # Comprobar si el directorio 'temp' existe, si no, crearlo
+    if not os.path.exists('temp'):
+        os.makedirs('temp')
 
     # Convertir el DataFrame a una lista de listas, una lista por cada fila
     data = [df.columns.tolist()] + df.values.tolist()
-
+    now = datetime.now()
+    formatted_date = now.strftime("%H%M%S_%d%m%Y")
     # Definir el archivo PDF de salida
-    file_path = f"temp/{reporte.id}.pdf"
+    nombre_pdf = f"{reporte.id}_{formatted_date}.pdf"
+    file_path = f"temp/{nombre_pdf}"
 
-    pdf = SimpleDocTemplate("reporte.pdf", pagesize=letter)
+    pdf = SimpleDocTemplate(file_path, pagesize=letter)
 
     # Configuración de estilos
     styles = getSampleStyleSheet()
@@ -244,21 +252,6 @@ async def descargar_reporte(reporte_id: int):
 
     return FileResponse(file_path)
 
-# @app.get("/descargar/{reporte_id}")
-# async def descargar_reporte(reporte_id: int):
-#     """ Descargar un reporte """
-#     reporte = await ReporteRepo.get(database, reporte_id)
-#     if not reporte:
-#         raise HTTPException(status_code=404, detail="Reporte no encontrado")
-
-#     if reporte.estado != 'Finalizado':
-#         raise HTTPException(status_code=400, detail="Reporte no finalizado")
-
-#     file_path = f"temp/{reporte.id}.txt"
-#     file = json_to_txt(reporte.archivo, file_path)
-
-#     return FileResponse(file_path)
-
 @app.post("/upload")
 async def upload(input:ExecutionSchema):
     """ Generar reporte """
@@ -276,34 +269,3 @@ async def version():
     """ Get versión """
     return {"version": "Ganadora 666", "environment": "Master"}
 
-def generate_pdf(df, sucursal, start_date, end_date):
-    pdf = SimpleDocTemplate("reporte.pdf", pagesize=letter)
-
-    # Configuración de estilos
-    styles = getSampleStyleSheet()
-    styleN = styles["BodyText"]
-    styleH = styles["Heading1"]
-
-    # Título y Subtítulo
-    titulo = Paragraph(f"Reporte de Sucursal: {sucursal}", styleH)
-    subtitulo = Paragraph(f"Fecha de inicio: {start_date}, Fecha de fin: {end_date}", styleN)
-
-    # Convierte el DataFrame en una lista de listas
-    data = [df.columns.tolist()] + df.values.tolist()
-
-    # Crea la tabla
-    table = Table(data)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-
-    # Agrega el título, subtítulo y tabla al PDF
-    elements = [titulo, subtitulo, table]
-    pdf.build(elements)

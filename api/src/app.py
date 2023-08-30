@@ -1,6 +1,7 @@
 # app.py
 
 # Importamos las bibliotecas necesarias
+from datetime import date
 import os
 import streamlit as st
 from streamlit import components
@@ -21,6 +22,21 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+style = """
+<style>
+table {
+    margin-left: auto;
+    margin-right: auto;
+}
+</style>
+"""
+style_title = """
+<style>
+.stApp h1 {
+    text-align: center;
+}
+</style>
+"""
 endpoint_url = os.environ.get("ENDPOINT_URL")
 st.image('https://scmlatam.com/wp-content/uploads/2022/04/logo-colores-scm.svg', width=200)
 
@@ -44,13 +60,16 @@ if selected == "Generar reporte":
     sucursales = ["Talagante", "Maipo", "Buin"]
     sucursal_to_code = {"Talagante": 1, "Maipo": 2, "Buin": 3}  # Mapeo de nombres a códigos
 
+    st.markdown(style_title, unsafe_allow_html=True)
+    st.title(f"{selected}")
+
     with st.form(key='form_reporte'):
         st.write("Generar Reporte")
 
         # Recolectar entradas del usuario
         sucursal = st.selectbox('Sucursales', options=sucursales)
-        start = st.date_input('Fecha de inicio')
-        end = st.date_input('Fecha de fin')
+        start = st.date_input('Fecha de inicio', value=date(2023, 3, 27))
+        end = st.date_input('Fecha de fin', value=date(2023, 4, 6))
 
         # Botón de envío del formulario
         submit_button = st.form_submit_button(label='Enviar')
@@ -79,7 +98,10 @@ if selected == "Generar reporte":
 
 elif selected == "Visualizar reportes":
 
-    st.title(f"{selected} seleccionado")
+    st.markdown(style_title, unsafe_allow_html=True)
+
+# Añadir el título
+    st.title(f"{selected}")
     sucursal_to_name = {1: "Talagante", 2: "Maipo", 3: "Buin"}
 
     endpoint_url_reportes = f'{endpoint_url}reportes'  # Asegúrate de cambiar esta dirección por la de tu API
@@ -103,7 +125,7 @@ elif selected == "Visualizar reportes":
         html_table = df[['Sucursal', 'Fecha Inicio', 'Fecha Fin', 'Estado', 'Descargar']].to_html(render_links=True, escape=False, index=False)
 
         # Renderizar la tabla HTML en Streamlit
-        st.markdown(html_table, unsafe_allow_html=True)
+        st.markdown(f'{style}{html_table}', unsafe_allow_html=True)
 
     else:
         st.error(f"Hubo un error en la obtención de reportes. Código de estado: {response.status_code}")
