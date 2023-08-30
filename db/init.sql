@@ -24,7 +24,9 @@ CREATE TABLE reporte (
     archivo JSON NOT NULL,
     estado VARCHAR(50) NOT NULL,
     sucursal_id INT NOT NULL,
-    FOREIGN KEY (sucursal_id) REFERENCES sucursal(id)
+    FOREIGN KEY (sucursal_id) REFERENCES sucursal(id),
+    start_date DATE,
+    end_date DATE
 );
 
 
@@ -117,7 +119,6 @@ INSERT INTO marca (timestamp, colaborador_id) VALUES ('2023-04-05 08:00', 5), ('
 
 -- Colaboradores ID 6
 
--- Colaborador ID 5
 INSERT INTO marca (timestamp, colaborador_id) VALUES ('2023-03-27 08:00', 6), ('2023-03-27 17:00', 6);
 INSERT INTO marca (timestamp, colaborador_id) VALUES ('2023-03-28 08:00', 6), ('2023-03-28 17:00', 6);
 INSERT INTO marca (timestamp, colaborador_id) VALUES ('2023-03-29 08:00', 6), ('2023-03-29 17:00', 6);

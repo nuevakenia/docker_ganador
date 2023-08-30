@@ -6,3 +6,4 @@ greenlet
 asyncpg
 httpx
 databases[asyncpg]
+reportlab

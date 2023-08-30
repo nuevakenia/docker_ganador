@@ -12,10 +12,19 @@ from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi import HTTPException
 
 # Database
-from sqlalchemy import BigInteger, Boolean, Column, Integer, Float, String, CHAR, DateTime, ForeignKey, Date, TIMESTAMP, JSON, insert, select, update
+from sqlalchemy import BigInteger, Boolean, Column, Integer, Float, String, CHAR, DateTime, ForeignKey, Date, TIMESTAMP, JSON, insert, select, update, and_, desc
 from sqlalchemy.ext.declarative import declarative_base
+from pandas import DataFrame
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+
 app = FastAPI(title="Backend Ganador")
 
 # DB
@@ -81,10 +90,24 @@ class Reporte(Base):
     archivo = Column(JSON)
     estado = Column(String(50))
     sucursal_id = Column(Integer, ForeignKey("sucursal.id"))
+    start_date = Column(Date)
+    end_date = Column(Date)
 
 # Queries & DDL
 
 class ReporteRepo:
+    @classmethod
+    async def get_all(cls, db) -> Reporte:
+        stmt = select(Reporte).order_by(desc(Reporte.id)).limit(10)
+        result = await db.fetch_all(stmt)
+        return result
+
+    @classmethod
+    async def get(cls, db, reporte_id:int) -> Reporte:
+        stmt = select(Reporte).where(Reporte.id == reporte_id)
+        result = await db.fetch_one(stmt)
+        return result
+
     @classmethod
     async def create(cls,input : ExecutionSchema) -> Reporte:
         stmt_colabs = select(Colaborador.id).where(Colaborador.sucursal_id == input.sucursal)
@@ -113,42 +136,128 @@ class ReporteRepo:
 
         stmt_insert = insert(Reporte).values(
         archivo={},
-        estado="pendiente",
-        sucursal_id=input.sucursal)
+        estado="Generado",
+        sucursal_id=input.sucursal,
+        start_date=input.start_date,
+        end_date=input.end_date)
 
         report = await database.execute(stmt_insert)
 
-        return marcas_json, stmt_insert
+        return marcas_json, report
 
     @classmethod
     async def update(cls, report_id:int, marcas) -> Reporte:
         await asyncio.sleep(10)
+        if not marcas:
+            marcas = {"error" : "sin marcaciones dentro del rango de fecha para la sucursal seleccionada."}
+        stmt_update = (
+        update(Reporte).
+        where(and_(Reporte.id == report_id)).
+        values(
+            estado="En proceso"
+        )
+    )
+        await asyncio.sleep(10)
+        if not marcas:
+            marcas = {"error" : "sin marcaciones dentro del rango de fecha para la sucursal seleccionada."}
         stmt_update = (
         update(Reporte).
         where(and_(Reporte.id == report_id)).
         values(
             archivo=marcas,
-            estado="finalizado"
+            estado="Finalizado"
         )
     )
         report = await database.execute(stmt_update)
         return report
 
-    @classmethod
-    async def get(cls, db, task_id:int) -> Reporte:
-        stmt = select(Reporte).where(Reporte.task == task_id)
-        return (await db.execute(stmt)).scalar()
+
+
+def json_to_txt(json_data: dict, file_path: str):
+    directory = os.path.dirname(file_path)
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(file_path, "w") as f:
+        f.write(json.dumps(json_data, indent=4))
 
 # Endpoints
 @app.get("/reportes")
-async def version():
+async def reportes():
     """ Get all reportes """
-    return {"version": "666", "environment": "Master"}
+    reportes = await ReporteRepo.get_all(database)
+    return JSONResponse(jsonable_encoder(reportes),status_code=200)
 
-@app.get("/version")
-async def version():
-    """ Get versión """
-    return {"version": "666", "environment": "Master"}
+
+@app.get("/descargar/{reporte_id}")
+async def descargar_reporte(reporte_id: int):
+    """ Descargar un reporte """
+    reporte = await ReporteRepo.get(database, reporte_id)
+    if not reporte:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    if reporte.estado != 'Finalizado':
+        raise HTTPException(status_code=400, detail="Reporte no finalizado")
+
+    data_dict = json.loads(reporte.archivo)
+    # Suponiendo que reporte.archivo es un diccionario o una lista de diccionarios que puedes convertir en DataFrame
+    df = DataFrame(data_dict)
+    generate_pdf(df, reporte.sucursal, reporte.start_date, reporte.end_date)
+
+    # Convertir el DataFrame a una lista de listas, una lista por cada fila
+    data = [df.columns.tolist()] + df.values.tolist()
+
+    # Definir el archivo PDF de salida
+    file_path = f"temp/{reporte.id}.pdf"
+
+    pdf = SimpleDocTemplate("reporte.pdf", pagesize=letter)
+
+    # Configuración de estilos
+    styles = getSampleStyleSheet()
+    styleN = styles["BodyText"]
+    styleH = styles["Heading1"]
+
+    # Título y Subtítulo
+    titulo = Paragraph(f"Reporte de Sucursal: {reporte.sucursal_id}", styleH)
+    subtitulo = Paragraph(f"Fecha de inicio: {reporte.start_date}, Fecha de fin: {reporte.end_date}", styleN)
+
+    # Convierte el DataFrame en una lista de listas
+    data = [df.columns.tolist()] + df.values.tolist()
+
+    # Crea la tabla
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+
+    # Agrega el título, subtítulo y tabla al PDF
+    elements = [titulo, subtitulo, table]
+    pdf.build(elements)
+
+    return FileResponse(file_path)
+
+# @app.get("/descargar/{reporte_id}")
+# async def descargar_reporte(reporte_id: int):
+#     """ Descargar un reporte """
+#     reporte = await ReporteRepo.get(database, reporte_id)
+#     if not reporte:
+#         raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+#     if reporte.estado != 'Finalizado':
+#         raise HTTPException(status_code=400, detail="Reporte no finalizado")
+
+#     file_path = f"temp/{reporte.id}.txt"
+#     file = json_to_txt(reporte.archivo, file_path)
+
+#     return FileResponse(file_path)
 
 @app.post("/upload")
 async def upload(input:ExecutionSchema):
@@ -162,29 +271,39 @@ async def upload(input:ExecutionSchema):
     print(f"Reporte: {id_reporte} en proceso")
     return JSONResponse(jsonable_encoder("Reporte en proceso!"),status_code=201)
 
-# Functions
-class Uploader:
-    """ Clase para ejecutar el proceso de carga de datos para las tablas
-        output,output_contratos,monthly,monthly_contratos """
-    async def upload(self,input : ExecutionSchema):
-        """ Generación reporte en cola """
-        # generar async await de 10 segundos
-        await asyncio.sleep(10)
-        #
-        op_insert,opc_insert = await OutputPlanningRepo.create(database,
-                input.task["id"],input.periods,input.periods_contratos)
+@app.get("/version")
+async def version():
+    """ Get versión """
+    return {"version": "Ganadora 666", "environment": "Master"}
 
-        # inserción monthly_planning
-        df_monthly = pd.DataFrame(input.months)
-        df_contrato = pd.DataFrame(input.months_contratos)
+def generate_pdf(df, sucursal, start_date, end_date):
+    pdf = SimpleDocTemplate("reporte.pdf", pagesize=letter)
 
-        opm_insert = await OutputPlanningMonthlyRepo.create(
-                                                    database,input.task["id"],
-                                                    df_monthly,df_contrato)
+    # Configuración de estilos
+    styles = getSampleStyleSheet()
+    styleN = styles["BodyText"]
+    styleH = styles["Heading1"]
 
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Título y Subtítulo
+    titulo = Paragraph(f"Reporte de Sucursal: {sucursal}", styleH)
+    subtitulo = Paragraph(f"Fecha de inicio: {start_date}, Fecha de fin: {end_date}", styleN)
 
-        if opm_insert:
-            update_task = await TaskRepo.update(database,
-                                input.task["id"],timestamp,input.task["estado"])
-            print("Ejecución Finalizada: ",input.task["id"])
+    # Convierte el DataFrame en una lista de listas
+    data = [df.columns.tolist()] + df.values.tolist()
+
+    # Crea la tabla
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+
+    # Agrega el título, subtítulo y tabla al PDF
+    elements = [titulo, subtitulo, table]
+    pdf.build(elements)
