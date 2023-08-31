@@ -159,7 +159,7 @@ elif selected == "Visualizar reportes":
         reportes = response.json()
         if reportes:
             for reporte in reportes:
-                reporte['Descargar'] = ''
+                reporte['Descargar'] = 'no disponible'
                 reporte['sucursal_id'] = sucursal_to_name.get(reporte['sucursal_id'], 'Desconocido')
                 if reporte["archivo"]:
                     file_path = generar_pdf(reporte)
