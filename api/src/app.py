@@ -61,18 +61,25 @@ selected = option_menu(
         },
 )
 
-def get_pdf_download_link(bytes_pdf, file_name):
+# def get_pdf_download_link(bytes_pdf, file_name):
+#     b64 = base64.b64encode(bytes_pdf).decode()
+#     href = f'<a href="data:file/pdf;base64,{b64}" download="{file_name}">Descargar archivo PDF</a>'
+#     return href
+
+def get_pdf_download_link(file_path):
+    with open(file_path, "rb") as f:
+        bytes_pdf = f.read()
     b64 = base64.b64encode(bytes_pdf).decode()
-    href = f'<a href="data:file/pdf;base64,{b64}" download="{file_name}">Descargar archivo PDF</a>'
+    href = f'<a href="data:file/pdf;base64,{b64}" download="{file_path.split("/")[-1]}">Descargar</a>'
     return href
 
+
+
 def generar_pdf(reporte):
-    if not reporte:
-        st.error(f"Reporte sin datos, probar con otra sucursal o rango de fecha.")
-    df = pd.DataFrame(reporte["archivo"])
+    archivo = reporte["archivo"]
+    df = pd.DataFrame(archivo)
     if not os.path.exists('temp'):
         os.makedirs('temp')
-
     data = [df.columns.tolist()] + df.values.tolist()
     now = datetime.now()
     formatted_date = now.strftime("%H%M%S_%d%m%Y")
@@ -84,8 +91,6 @@ def generar_pdf(reporte):
     styleH = styles["Heading1"]
     titulo = Paragraph(f"Reporte de Sucursal: {reporte['sucursal_id']}", styleH)
     subtitulo = Paragraph(f"Fecha de inicio: {reporte['start_date']}, Fecha de fin: {reporte['end_date']}", styleN)
-    data = [df.columns.tolist()] + df.values.tolist()
-
     table = Table(data)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
@@ -100,6 +105,7 @@ def generar_pdf(reporte):
     elements = [titulo, subtitulo, table]
     pdf.build(elements)
     return file_path
+
 
 if selected == "Generar reporte":
 
@@ -137,7 +143,7 @@ if selected == "Generar reporte":
 
         # Imprimir la respuesta
         if response.status_code == 201:
-            st.success('Generación de reporte iniciada con exito!, el proceso puede tardar unos segundos, para visualizar el reporte ir a la sección "visualizar reportes"')
+            st.success('Generación de reporte iniciada con exito! para visualizar el reporte ir a la sección "visualizar reportes"')
         else:
             st.error(f"Hubo un error en la generación de reporte. Código de estado: {response.status_code}")
 
@@ -145,34 +151,25 @@ if selected == "Generar reporte":
 elif selected == "Visualizar reportes":
     st.markdown(style_title, unsafe_allow_html=True)
 
-    if 'downloaded_reports' not in st.session_state:
-        st.session_state.downloaded_reports = {}
-
-    st.title(f"{selected}")
     sucursal_to_name = {1: "Talagante", 2: "Maipo", 3: "Buin"}
-
     endpoint_url_reportes = f'{endpoint_url}reportes'
     response = requests.get(endpoint_url_reportes)
+
     if response.status_code == 200:
         reportes = response.json()
-        for reporte in reportes:
-            reporte['sucursal_id'] = sucursal_to_name.get(reporte['sucursal_id'], 'Desconocido')
-            btn_id = f"download_{reporte['id']}"
-            if st.button(f"Descargar Reporte {reporte['id']}", key=btn_id):
-                file_path = generar_pdf(reporte)
-                with open(file_path, "rb") as f:
-                    bytes_pdf = f.read()
-                download_link = get_pdf_download_link(bytes_pdf, f"reporte_{reporte['id']}.pdf")
-                st.markdown(download_link, unsafe_allow_html=True)
+        if reportes:
+            for reporte in reportes:
+                reporte['Descargar'] = ''
+                reporte['sucursal_id'] = sucursal_to_name.get(reporte['sucursal_id'], 'Desconocido')
+                if reporte["archivo"]:
+                    file_path = generar_pdf(reporte)
+                    reporte['Descargar'] = get_pdf_download_link(file_path)
 
-        sorted_reportes = sorted(reportes, key=lambda x: x['id'], reverse=True)
-        df = pd.DataFrame(sorted_reportes)
-        df = df.rename(columns={'sucursal_id': 'Sucursal', 'start_date': 'Fecha Inicio', 'end_date': 'Fecha Fin', 'estado': 'Estado', 'descargar': 'Descargar'})
-        df['Descargar'] = df['id'].apply(generate_download_link)
-        html_table = df[['Sucursal', 'Fecha Inicio', 'Fecha Fin', 'Estado', 'Descargar']].to_html(render_links=True, escape=False, index=False)
-        st.markdown(f'{style}{html_table}', unsafe_allow_html=True)
-
-
+            sorted_reportes = sorted(reportes, key=lambda x: x['id'], reverse=True)
+            df = pd.DataFrame(sorted_reportes)
+            df = df.rename(columns={'sucursal_id': 'Sucursal', 'start_date': 'Fecha Inicio', 'end_date': 'Fecha Fin', 'estado': 'Estado'})
+            df = df.fillna('no disponible')
+            html_table = df[['Sucursal', 'Fecha Inicio', 'Fecha Fin', 'Estado', 'Descargar']].to_html(escape=False, index=False)
+            st.markdown(f'{style}{html_table}', unsafe_allow_html=True)
     else:
-        st.error(f"Hubo un error en la obtención de reportes. Código de estado: {response.status_code}")
-
+        st.error(f"No hay reportes generados. Código de estado: {response.status_code}")
