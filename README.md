@@ -19,7 +19,7 @@
   - [Validación del Despliegue](#validación-del-despliegue)
   - [Uso de la Aplicación](#uso-de-la-aplicación)
   - [FAQ](#faq)
-    - [¿Puedo ingresar al backend de manera local con \`0.0.0.0:8000\`?](#puedo-ingresar-al-backend-de-manera-local-con-00008000)
+    - [¿Puedo ingresar al backend de manera local con `0.0.0.0:8000`?](#puedo-ingresar-al-backend-de-manera-local-con-00008000)
     - [¿Puedo acceder a la base de datos desde mi dispositivo host?](#puedo-acceder-a-la-base-de-datos-desde-mi-dispositivo-host)
     - [¿Si elimino el contenedor, los reportes quedan almacenados?](#si-elimino-el-contenedor-los-reportes-quedan-almacenados)
     - [¿Cómo puedo cambiar las variables de entorno de los servicios?](#cómo-puedo-cambiar-las-variables-de-entorno-de-los-servicios)
@@ -61,9 +61,9 @@ Antes de seguir las instrucciones, asegúrese de tener una terminal, PowerShell 
 
 Para clonar el repositorio, utilice el siguiente comando en su terminal, o en su IDE/aplicación favorita. Si aún no tiene instalado Git, puede [descargarlo aquí](https://git-scm.com/downloads).
 
-\`\`\`bash
+```
 git clone https://github.com/nuevakenia/docker_ganador.git
-\`\`\`
+```
 
 ---
 
@@ -85,9 +85,9 @@ Siga las instrucciones específicas para su sistema operativo para completar la 
 
 Para verificar que Docker Daemon se haya iniciado correctamente, ejecute:
 
-\`\`\`bash
+```bash
 docker --version
-\`\`\`
+```
 
 Si todo está bien, debería ver la versión de Docker como salida.
 
@@ -95,18 +95,21 @@ Si todo está bien, debería ver la versión de Docker como salida.
 
 ## Configuración Inicial
 
-Abra la terminal, navegue hasta la carpeta del repositorio clonado y ejecute \`ls\` para confirmar que los archivos y carpetas necesarios están presentes.
+Abra la terminal, navegue hasta la carpeta del repositorio clonado y ejecute `ls` para confirmar que los archivos y carpetas necesarios están presentes.
 
-\`\`\`bash
+```bash
 cd docker_ganador
+```
+
+```bash
 ls
-\`\`\`
+```
 
 Debería ver una estructura similar a:
 
-\`
+`
 README.md  backend  docker-compose.yml  api  db
-\`
+`
 
 ### Configuraciones Preestablecidas
 
@@ -125,9 +128,9 @@ Para cambiar las variables de entorno, por favor consulte la sección de Pregunt
 
 Para construir y desplegar los contenedores, ejecute el siguiente comando:
 
-\`\`\`bash
+```bash
 docker-compose up --build
-\`\`\`
+```
 
 ---
 
@@ -135,7 +138,7 @@ docker-compose up --build
 
 Busque mensajes similares a los siguientes para confirmar que los contenedores se han desplegado correctamente:
 
-\`
+```
 docker_ganador-db-1         | 2023-08-31 02:16:27.586 UTC [1] LOG:  database system is ready to accept connections
 docker_ganador-backend-1    | INFO:     Started server process [1]
 docker_ganador-backend-1    | INFO:     Waiting for application startup.
@@ -146,14 +149,14 @@ docker_ganador-streamlit-1  |   You can now view your Streamlit app in your brow
 docker_ganador-streamlit-1  |
 docker_ganador-streamlit-1  |   Network URL: http://172.18.0.3:80
 docker_ganador-streamlit-1  |   External URL: http://200.83.159.136:80
-...
-\`
+
+```
 
 ---
 
 ## Uso de la Aplicación
 
-1. Abra su navegador y navegue hasta \`http://0.0.0.0:80\`.
+1. Abra su navegador y navegue hasta `http://0.0.0.0:80`.
 2. Seleccione la sucursal y el rango de fechas(marcaciones disponibles desde el 2023/03/27 - 2023/04/06 si no hay marcaciones no se podrá descargar el reporte).
 3. Haga clic en "Enviar".
 4. Haga clic en "Visualizar Reportes" y refresque la página haciendo click en el botón hasta que el reporte cambie de estado a "Finalizado" y se pueda descargar.
@@ -162,9 +165,9 @@ docker_ganador-streamlit-1  |   External URL: http://200.83.159.136:80
 
 ## FAQ
 
-### ¿Puedo ingresar al backend de manera local con \`0.0.0.0:8000\`?
+### ¿Puedo ingresar al backend de manera local con `0.0.0.0:8000`?
 
-No, debido a las configuraciones de \`network\` en \`docker-compose.yml\`, solo es posible acceder desde el servicio de api streamlit.
+No, debido a las configuraciones de `network` en `docker-compose.yml`, solo es posible acceder desde el servicio de api streamlit.
 
 ### ¿Puedo acceder a la base de datos desde mi dispositivo host?
 
@@ -180,7 +183,7 @@ Para cambiar las variables de entorno, es necesario abrir el archivo `.env` ubic
 
 Por ejemplo, su archivo `.env` podría lucir de la siguiente manera:
 
-\`\`\`bash
+```bash
 POSTGRES_USER=ganador
 POSTGRES_PASSWORD=666
 POSTGRES_DB=challenge
@@ -191,18 +194,18 @@ DB_NAME=challenge
 ENDPOINT_URL="http://backend:8000/"
 BACKEND_PORT=8000
 API_PORT=80
-\`\`\`
+```
 
 Si elimina, agrega o modifica el nombre de alguna de las variables de entorno, deberá realizar cambios correspondientes en el archivo `docker-compose.yml`.
 
 En la sección de cada contenedor, encontrará el bloque `environment`. A continuación, se muestra un ejemplo:
 
-\`\`\`yaml
+```yaml
 environment:
   POSTGRES_USER: ${POSTGRES_USER}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   POSTGRES_DB: ${POSTGRES_DB}
-\`\`\`
+```
 
 Aquí, el nombre a la izquierda (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, etc.) representa la variable de entorno que el servicio utilizará. El valor a la derecha (`${POSTGRES_USER}`, `${POSTGRES_PASSWORD}`, `${POSTGRES_DB}`, etc.) hace referencia al nombre de la variable que se encuentra en su archivo `.env`.
 
