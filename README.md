@@ -177,6 +177,10 @@ No, por las mismas razones mencionadas anteriormente.
 
 Sí, gracias al volumen asignado, los datos son persistentes.
 
+### ¿El backend y la API estan corriendo en servidores de test o debug?
+No, Uvicorn es el Servidor ASGI utilizado por FastAPI y al igual que el servidor interno de Streamlit, ambos son aptos para trabajar en ambientes productivos.
+
+
 ### ¿Cómo puedo cambiar las variables de entorno de los servicios?
 
 Para cambiar las variables de entorno, es necesario abrir el archivo `.env` ubicado en la carpeta raíz del repositorio. En este archivo, puede agregar, modificar o eliminar las variables de entorno según sus necesidades.
