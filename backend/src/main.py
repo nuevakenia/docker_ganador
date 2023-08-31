@@ -31,7 +31,7 @@ app = FastAPI(title="Backend Ganador")
 
 DRIVER: str = "postgresql+asyncpg"
 USER: str = os.environ.get("DB_USER", "postgres")
-PASSWORD: str = os.environ.get("DB_PASS", "abc123")
+PASSWORD: str = os.environ.get("DB_PASS", "123")
 HOST: str = os.environ.get("DB_HOST", "db")
 NAME: str = os.environ.get("DB_NAME", "challenge")
 print(F"variables:'{DRIVER}://{USER}:{PASSWORD}@{HOST}/{NAME}'")

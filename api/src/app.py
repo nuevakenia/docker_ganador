@@ -46,8 +46,6 @@ style_title = """
 endpoint_url = os.environ.get("ENDPOINT_URL")
 st.image('https://scmlatam.com/wp-content/uploads/2022/04/logo-colores-scm.svg', width=200)
 
-# menu variables
-# permite que cambie el menu según la variable de entorno, test(arcos dorados o pruebas de claudio), spsa(spsa) y all(desarrollo)
 
 selected = option_menu(
     menu_title="Challenge Ganador 🐳",
@@ -61,10 +59,6 @@ selected = option_menu(
         },
 )
 
-# def get_pdf_download_link(bytes_pdf, file_name):
-#     b64 = base64.b64encode(bytes_pdf).decode()
-#     href = f'<a href="data:file/pdf;base64,{b64}" download="{file_name}">Descargar archivo PDF</a>'
-#     return href
 
 def get_pdf_download_link(file_path):
     with open(file_path, "rb") as f:
@@ -78,13 +72,14 @@ def get_pdf_download_link(file_path):
 def generar_pdf(reporte):
     archivo = reporte["archivo"]
     df = pd.DataFrame(archivo)
-    if not os.path.exists('temp'):
-        os.makedirs('temp')
+    if not os.path.exists('/opt/app/temp'):
+        print("Creando directorio temp")
+        os.makedirs('/opt/app/temp')
     data = [df.columns.tolist()] + df.values.tolist()
     now = datetime.now()
     formatted_date = now.strftime("%H%M%S_%d%m%Y")
     nombre_pdf = f"{reporte['id']}_{formatted_date}.pdf"
-    file_path = f"temp/{nombre_pdf}"
+    file_path = f"/opt/app/temp/{nombre_pdf}"
     pdf = SimpleDocTemplate(file_path, pagesize=letter)
     styles = getSampleStyleSheet()
     styleN = styles["BodyText"]
