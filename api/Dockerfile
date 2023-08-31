@@ -1,8 +1,12 @@
-FROM python:3.11
-RUN adduser --disabled-password --gecos '' www-data
-WORKDIR /app
-COPY . /app
-RUN chown -R www-data:www-data /app
+FROM python:slim-bookworm
+WORKDIR /opt/app
+COPY ./requirements.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+COPY ./src/ /opt/app
+COPY ./.streamlit/ /opt/app/.streamlit
+COPY ./.streamlit/ /opt/.streamlit
+RUN chown -R www-data:www-data /opt/app
 USER www-data
-RUN pip install streamlit
-CMD ["streamlit", "run", "app.py"]
+WORKDIR /opt/
+ENTRYPOINT ["streamlit", "run", "/opt/app/app.py", "--server.port"]
+CMD ["80"]

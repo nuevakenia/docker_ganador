@@ -4,3 +4,4 @@ pandas
 streamlit
 requests
 streamlit_option_menu
+reportlab

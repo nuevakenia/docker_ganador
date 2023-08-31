@@ -28,12 +28,13 @@ from reportlab.lib.styles import getSampleStyleSheet
 app = FastAPI(title="Backend Ganador")
 
 # DB
+
 DRIVER: str = "postgresql+asyncpg"
 USER: str = os.environ.get("DB_USER", "postgres")
-PASSWORD: str = os.environ.get("DB_PASS", "123")
-HOST: str = os.environ.get("DB_HOST", "localhost")
+PASSWORD: str = os.environ.get("DB_PASS", "abc123")
+HOST: str = os.environ.get("DB_HOST", "db")
 NAME: str = os.environ.get("DB_NAME", "challenge")
-
+print(F"variables:'{DRIVER}://{USER}:{PASSWORD}@{HOST}/{NAME}'")
 database = Database(F'{DRIVER}://{USER}:{PASSWORD}@{HOST}/{NAME}')
 
 @app.on_event("startup")
@@ -200,7 +201,7 @@ async def descargar_reporte(reporte_id: int):
 
     if reporte.estado != 'Finalizado':
         raise HTTPException(status_code=400, detail="Reporte no finalizado")
-
+    reportee = reporte.archivo
     data_dict = json.loads(reporte.archivo)
     if not data_dict:
         raise HTTPException(status_code=400, detail="Reporte sin datos")

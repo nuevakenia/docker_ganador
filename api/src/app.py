@@ -1,7 +1,8 @@
 # app.py
 
 # Importamos las bibliotecas necesarias
-from datetime import date
+import base64
+from datetime import date, datetime
 import os
 import streamlit as st
 from streamlit import components
@@ -9,6 +10,11 @@ from streamlit_option_menu import option_menu
 import pandas as pd
 import requests
 import json
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 
 st.set_page_config(layout="wide")
 # Se esconden los elementos no usados.
@@ -55,6 +61,46 @@ selected = option_menu(
         },
 )
 
+def get_pdf_download_link(bytes_pdf, file_name):
+    b64 = base64.b64encode(bytes_pdf).decode()
+    href = f'<a href="data:file/pdf;base64,{b64}" download="{file_name}">Descargar archivo PDF</a>'
+    return href
+
+def generar_pdf(reporte):
+    if not reporte:
+        st.error(f"Reporte sin datos, probar con otra sucursal o rango de fecha.")
+    df = pd.DataFrame(reporte["archivo"])
+    if not os.path.exists('temp'):
+        os.makedirs('temp')
+
+    data = [df.columns.tolist()] + df.values.tolist()
+    now = datetime.now()
+    formatted_date = now.strftime("%H%M%S_%d%m%Y")
+    nombre_pdf = f"{reporte['id']}_{formatted_date}.pdf"
+    file_path = f"temp/{nombre_pdf}"
+    pdf = SimpleDocTemplate(file_path, pagesize=letter)
+    styles = getSampleStyleSheet()
+    styleN = styles["BodyText"]
+    styleH = styles["Heading1"]
+    titulo = Paragraph(f"Reporte de Sucursal: {reporte['sucursal_id']}", styleH)
+    subtitulo = Paragraph(f"Fecha de inicio: {reporte['start_date']}, Fecha de fin: {reporte['end_date']}", styleN)
+    data = [df.columns.tolist()] + df.values.tolist()
+
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    elements = [titulo, subtitulo, table]
+    pdf.build(elements)
+    return file_path
+
 if selected == "Generar reporte":
 
     sucursales = ["Talagante", "Maipo", "Buin"]
@@ -97,35 +143,35 @@ if selected == "Generar reporte":
 
 
 elif selected == "Visualizar reportes":
-
     st.markdown(style_title, unsafe_allow_html=True)
 
-# Añadir el título
+    if 'downloaded_reports' not in st.session_state:
+        st.session_state.downloaded_reports = {}
+
     st.title(f"{selected}")
     sucursal_to_name = {1: "Talagante", 2: "Maipo", 3: "Buin"}
 
-    endpoint_url_reportes = f'{endpoint_url}reportes'  # Asegúrate de cambiar esta dirección por la de tu API
+    endpoint_url_reportes = f'{endpoint_url}reportes'
     response = requests.get(endpoint_url_reportes)
     if response.status_code == 200:
         reportes = response.json()
-
-        # Reemplaza el código de la sucursal con el nombre
         for reporte in reportes:
             reporte['sucursal_id'] = sucursal_to_name.get(reporte['sucursal_id'], 'Desconocido')
-            reporte['descargar'] = f"<a href='{endpoint_url}descargar/{reporte['id']}'>Descargar</a>"  # Enlace de descarga
+            btn_id = f"download_{reporte['id']}"
+            if st.button(f"Descargar Reporte {reporte['id']}", key=btn_id):
+                file_path = generar_pdf(reporte)
+                with open(file_path, "rb") as f:
+                    bytes_pdf = f.read()
+                download_link = get_pdf_download_link(bytes_pdf, f"reporte_{reporte['id']}.pdf")
+                st.markdown(download_link, unsafe_allow_html=True)
 
-        # Ordena los reportes por ID de mayor a menor
         sorted_reportes = sorted(reportes, key=lambda x: x['id'], reverse=True)
-
-        # Convertir a DataFrame de Pandas para mostrar como tabla
         df = pd.DataFrame(sorted_reportes)
         df = df.rename(columns={'sucursal_id': 'Sucursal', 'start_date': 'Fecha Inicio', 'end_date': 'Fecha Fin', 'estado': 'Estado', 'descargar': 'Descargar'})
-
-        # Usar to_html para convertir el DataFrame en una tabla HTML
+        df['Descargar'] = df['id'].apply(generate_download_link)
         html_table = df[['Sucursal', 'Fecha Inicio', 'Fecha Fin', 'Estado', 'Descargar']].to_html(render_links=True, escape=False, index=False)
-
-        # Renderizar la tabla HTML en Streamlit
         st.markdown(f'{style}{html_table}', unsafe_allow_html=True)
+
 
     else:
         st.error(f"Hubo un error en la obtención de reportes. Código de estado: {response.status_code}")

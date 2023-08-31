@@ -8,6 +8,7 @@ desde descargar el repositorio, instalar paquetes, script para iniciar la base d
 
 (aclarar en la documentacion que Uvicorn y streamlit no es el webserver de desarrollo, es productivo)
 
+observacione
 
 Pasos build
 
