@@ -1,10 +1,10 @@
-# Manual de Uso para Despliegue del challenge ganador 🥵🥵🥵
+# Manual de Uso para Despliegue del challenge Docker
 
 ## Tabla de Contenidos
-- [Manual de Uso para Despliegue del challenge ganador 🥵🥵🥵](#manual-de-uso-para-despliegue-del-challenge-ganador-)
+- [Manual de Uso para Despliegue del challenge ganador](#manual-de-uso-para-despliegue-del-challenge-ganador-)
   - [Tabla de Contenidos](#tabla-de-contenidos)
   - [Introducción](#introducción)
-    - [Bienvenido a la Documentación del Challenge Ganador 🐳](#bienvenido-a-la-documentación-del-challenge-ganador-)
+    - [Bienvenido a la Documentación del Challenge Docker 🐳](#bienvenido-a-la-documentación-del-challenge-ganador-)
       - [Criterios de Selección de Imágenes 🎯](#criterios-de-selección-de-imágenes-)
       - [Orquestación con Docker Compose 🎶](#orquestación-con-docker-compose-)
   - [Requisitos Previos](#requisitos-previos)
